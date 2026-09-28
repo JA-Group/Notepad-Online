@@ -1,0 +1,15 @@
+{
+  "short_name": "Notepad++ Online",
+  "name": "Notepad++ Online PWA",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
