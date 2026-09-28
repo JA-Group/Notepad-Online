@@ -1,8 +1,9 @@
-const CACHE_NAME = 'notepad-plus-online-cache-v1';
+const CACHE_NAME = 'notepad-plus-plus-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './vite.svg'
 ];
 
 self.addEventListener('install', event => {
@@ -15,11 +16,6 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
+      .then(response => response || fetch(event.request))
   );
 });
