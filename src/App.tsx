@@ -1,9 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText, PanelLeft } from 'lucide-react';
+import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText, PanelLeft, Copy, ArrowUp, ArrowDown } from 'lucide-react';
 import { useEditorTabs } from './hooks/useEditorTabs';
 import Sidebar from './components/Sidebar';
 import './index.css';
+
+const SUPPORTED_LANGUAGES = [
+  'plaintext', 'javascript', 'typescript', 'html', 'css', 'json', 'python', 'cpp', 'c', 'java', 'xml', 'sql', 'markdown', 'php', 'ruby', 'go', 'rust', 'csharp'
+];
 
 export default function App() {
   const {
@@ -48,6 +52,24 @@ export default function App() {
   const triggerSearch = () => {
     if (editorRef.current) {
       editorRef.current.trigger('keyboard', 'actions.find', null);
+    }
+  };
+
+  const duplicateLine = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('keyboard', 'editor.action.copyLinesDownAction', null);
+    }
+  };
+
+  const moveLineUp = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('keyboard', 'editor.action.moveLinesUpAction', null);
+    }
+  };
+
+  const moveLineDown = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('keyboard', 'editor.action.moveLinesDownAction', null);
     }
   };
 
@@ -214,6 +236,15 @@ export default function App() {
         <button className="toolbar-btn" onClick={triggerSearch} title="Search & Replace">
           <Search size={16} />
         </button>
+        <button className="toolbar-btn" onClick={duplicateLine} title="Duplicate Line">
+          <Copy size={16} />
+        </button>
+        <button className="toolbar-btn" onClick={moveLineUp} title="Move Line Up">
+          <ArrowUp size={16} />
+        </button>
+        <button className="toolbar-btn" onClick={moveLineDown} title="Move Line Down">
+          <ArrowDown size={16} />
+        </button>
         <button className="toolbar-btn" onClick={zoomIn} title="Zoom In">
           <ZoomIn size={16} />
         </button>
@@ -285,7 +316,21 @@ export default function App() {
       {/* Status Bar */}
       <div className="status-bar">
         <div className="status-section">
-          <span className="status-item">{activeTab?.language || 'plaintext'} type</span>
+          <span className="status-item">
+            <select
+              value={activeTab?.language || 'plaintext'}
+              onChange={(e) => {
+                if (activeTabId) {
+                  updateTab(activeTabId, { language: e.target.value });
+                }
+              }}
+              style={{ backgroundColor: 'transparent', color: 'inherit', border: 'none', outline: 'none', cursor: 'pointer' }}
+            >
+              {SUPPORTED_LANGUAGES.map(lang => (
+                <option key={lang} value={lang} style={{ color: '#000' }}>{lang}</option>
+              ))}
+            </select>
+          </span>
           <span className="status-item">length: {activeTab?.content.length || 0}</span>
           <span className="status-item">lines: {activeTab?.content.split('\n').length || 1}</span>
         </div>
