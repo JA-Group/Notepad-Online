@@ -1,18 +1,41 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Save, FolderOpen, FileText, Settings, X } from 'lucide-react';
+import { Save, FolderOpen, FileText, X, Moon, Sun } from 'lucide-react';
+import { useEditorTabs } from './hooks/useEditorTabs';
 import './index.css';
 
 export default function App() {
-  const [content, setContent] = useState<string>('');
-  const [language, setLanguage] = useState('plaintext');
-  const [fileHandle, setFileHandle] = useState<any>(null);
-  const [fileName, setFileName] = useState<string>('Untitled.txt');
+  const {
+    tabs,
+    activeTab,
+    activeTabId,
+    setActiveTabId,
+    createNewTab,
+    updateTab,
+    closeTab,
+    isLoaded
+  } = useEditorTabs();
+
   const [lineCount, setLineCount] = useState(1);
   const [colCount, setColCount] = useState(1);
-  const encoding = 'UTF-8';
+  const [theme, setTheme] = useState<'vs-light' | 'vs-dark'>('vs-light');
   
+  const encoding = 'UTF-8';
   const editorRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Load theme from localStorage if possible
+    const savedTheme = localStorage.getItem('notepad-theme');
+    if (savedTheme === 'vs-dark' || savedTheme === 'vs-light') {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'vs-light' ? 'vs-dark' : 'vs-light';
+    setTheme(newTheme);
+    localStorage.setItem('notepad-theme', newTheme);
+  };
 
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
@@ -30,17 +53,14 @@ export default function App() {
       const file = await handle.getFile();
       const text = await file.text();
       
-      setFileHandle(handle);
-      setFileName(file.name);
-      setContent(text);
+      let language = 'plaintext';
+      if (file.name.endsWith('.js') || file.name.endsWith('.jsx')) language = 'javascript';
+      else if (file.name.endsWith('.ts') || file.name.endsWith('.tsx')) language = 'typescript';
+      else if (file.name.endsWith('.html')) language = 'html';
+      else if (file.name.endsWith('.css')) language = 'css';
+      else if (file.name.endsWith('.json')) language = 'json';
       
-      // Basic language detection
-      if (file.name.endsWith('.js') || file.name.endsWith('.jsx')) setLanguage('javascript');
-      else if (file.name.endsWith('.ts') || file.name.endsWith('.tsx')) setLanguage('typescript');
-      else if (file.name.endsWith('.html')) setLanguage('html');
-      else if (file.name.endsWith('.css')) setLanguage('css');
-      else if (file.name.endsWith('.json')) setLanguage('json');
-      else setLanguage('plaintext');
+      createNewTab(file.name, text, language, handle);
       
     } catch (err) {
       console.log('User cancelled or error:', err);
@@ -49,62 +69,65 @@ export default function App() {
 
   const saveFile = async () => {
     try {
-      if (!editorRef.current) return;
+      if (!editorRef.current || !activeTab) return;
       
       const currentContent = editorRef.current.getValue();
-      let handleToUse = fileHandle;
+      let handleToUse = activeTab.fileHandle;
       
       if (!handleToUse) {
         handleToUse = await (window as any).showSaveFilePicker({
-          suggestedName: fileName,
+          suggestedName: activeTab.name,
           types: [{
             description: 'Text Files',
             accept: { 'text/plain': ['.txt'] },
           }],
         });
-        setFileHandle(handleToUse);
-        setFileName(handleToUse.name);
       }
+      
+      // Update state before writing to ensure UI is snappy
+      updateTab(activeTab.id, { 
+        content: currentContent, 
+        fileHandle: handleToUse,
+        name: handleToUse.name,
+        isUnsaved: false 
+      });
       
       const writable = await handleToUse.createWritable();
       await writable.write(currentContent);
       await writable.close();
       
-      alert('File saved successfully!');
     } catch (err) {
       console.error('Error saving file:', err);
     }
   };
 
-  const newFile = () => {
-    setContent('');
-    setFileHandle(null);
-    setFileName('Untitled.txt');
-    setLanguage('plaintext');
+  const onEditorChange = (val: string | undefined) => {
+    if (activeTabId && val !== undefined) {
+      updateTab(activeTabId, { content: val, isUnsaved: true });
+    }
   };
 
+  if (!isLoaded) {
+    return <div style={{ padding: 20 }}>Loading session...</div>;
+  }
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${theme === 'vs-dark' ? 'dark-mode' : ''}`}>
       {/* Menu Bar */}
       <div className="menu-bar">
-        <div className="menu-item" onClick={newFile}>File</div>
+        <div className="menu-item" onClick={() => createNewTab()}>File</div>
         <div className="menu-item">Edit</div>
         <div className="menu-item">Search</div>
         <div className="menu-item">View</div>
         <div className="menu-item">Encoding</div>
         <div className="menu-item">Language</div>
-        <div className="menu-item">Settings</div>
-        <div className="menu-item">Tools</div>
-        <div className="menu-item">Macro</div>
-        <div className="menu-item">Run</div>
-        <div className="menu-item">Plugins</div>
-        <div className="menu-item">Window</div>
+        <div className="menu-item" onClick={toggleTheme}>Theme</div>
         <div className="menu-item">?</div>
       </div>
 
       {/* Toolbar */}
       <div className="toolbar">
-        <button className="toolbar-btn" onClick={newFile} title="New File">
+        <button className="toolbar-btn" onClick={() => createNewTab()} title="New File" data-testid="new-file-btn">
           <FileText size={16} />
         </button>
         <button className="toolbar-btn" onClick={openFile} title="Open File">
@@ -114,46 +137,64 @@ export default function App() {
           <Save size={16} />
         </button>
         <div className="toolbar-divider"></div>
-        <button className="toolbar-btn" title="Close File" onClick={newFile}>
+        <button className="toolbar-btn" onClick={() => activeTabId && closeTab(activeTabId)} title="Close Current File">
           <X size={16} />
         </button>
         <div className="toolbar-divider"></div>
-        <button className="toolbar-btn" title="Settings">
-          <Settings size={16} />
+        <button className="toolbar-btn" onClick={toggleTheme} title="Toggle Theme">
+          {theme === 'vs-light' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
       </div>
 
-      {/* Tab bar (Mock) */}
-      <div style={{ display: 'flex', backgroundColor: '#f0f0f0', borderBottom: '1px solid #ccc' }}>
-        <div style={{ padding: '5px 15px', backgroundColor: '#fff', borderRight: '1px solid #ccc', borderTop: '2px solid orange', cursor: 'pointer', fontSize: '12px' }}>
-          {fileName}
-        </div>
+      {/* Tab bar */}
+      <div className="tab-bar">
+        {tabs.map(tab => (
+          <div 
+            key={tab.id} 
+            className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
+            onClick={() => setActiveTabId(tab.id)}
+          >
+            <span className="tab-title">
+              {tab.name} {tab.isUnsaved ? '*' : ''}
+            </span>
+            <button 
+              className="tab-close-btn" 
+              onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Editor */}
       <div className="editor-container">
-        <Editor
-          height="100%"
-          language={language}
-          theme="vs-light"
-          value={content}
-          onChange={(val) => setContent(val || '')}
-          onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: true },
-            wordWrap: 'on',
-            fontSize: 14,
-            fontFamily: "'Consolas', 'Courier New', monospace"
-          }}
-        />
+        {activeTab && (
+          <Editor
+            key={activeTab.id} // Ensure editor remounts or updates when switching tabs, though passing value is usually enough
+            path={activeTab.id} // helps monaco distinguish models
+            height="100%"
+            language={activeTab.language}
+            theme={theme}
+            value={activeTab.content}
+            onChange={onEditorChange}
+            onMount={handleEditorDidMount}
+            options={{
+              minimap: { enabled: true },
+              wordWrap: 'on',
+              fontSize: 14,
+              fontFamily: "'Consolas', 'Courier New', monospace"
+            }}
+          />
+        )}
       </div>
 
       {/* Status Bar */}
       <div className="status-bar">
         <div className="status-section">
-          <span className="status-item">{language} type</span>
-          <span className="status-item">length: {content.length}</span>
-          <span className="status-item">lines: {content.split('\n').length}</span>
+          <span className="status-item">{activeTab?.language || 'plaintext'} type</span>
+          <span className="status-item">length: {activeTab?.content.length || 0}</span>
+          <span className="status-item">lines: {activeTab?.content.split('\n').length || 1}</span>
         </div>
         <div className="status-section">
           <span className="status-item">Ln: {lineCount} Col: {colCount}</span>
