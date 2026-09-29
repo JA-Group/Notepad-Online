@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Save, FolderOpen, FileText, X, Moon, Sun } from 'lucide-react';
+import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText } from 'lucide-react';
 import { useEditorTabs } from './hooks/useEditorTabs';
 import './index.css';
 
@@ -19,6 +19,8 @@ export default function App() {
   const [lineCount, setLineCount] = useState(1);
   const [colCount, setColCount] = useState(1);
   const [theme, setTheme] = useState<'vs-light' | 'vs-dark'>('vs-light');
+  const [fontSize, setFontSize] = useState(14);
+  const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
   
   const encoding = 'UTF-8';
   const editorRef = useRef<any>(null);
@@ -37,6 +39,16 @@ export default function App() {
     localStorage.setItem('notepad-theme', newTheme);
   };
 
+  const zoomIn = () => setFontSize(prev => Math.min(prev + 2, 40));
+  const zoomOut = () => setFontSize(prev => Math.max(prev - 2, 8));
+  const toggleWordWrap = () => setWordWrap(prev => prev === 'on' ? 'off' : 'on');
+  
+  const triggerSearch = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('keyboard', 'actions.find', null);
+    }
+  };
+
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
     
@@ -47,9 +59,35 @@ export default function App() {
     });
   };
 
+  const verifyPermission = async (fileHandle: any, readWrite: boolean = true) => {
+    const options = { mode: readWrite ? 'readwrite' : 'read' };
+    if ((await fileHandle.queryPermission(options)) === 'granted') {
+      return true;
+    }
+    if ((await fileHandle.requestPermission(options)) === 'granted') {
+      return true;
+    }
+    return false;
+  };
+
   const openFile = async () => {
     try {
-      const [handle] = await (window as any).showOpenFilePicker();
+      const [handle] = await (window as any).showOpenFilePicker({
+        types: [
+          {
+            description: 'Text Files',
+            accept: {
+              'text/plain': ['.txt', '.md', '.csv'],
+              'text/html': ['.html', '.htm'],
+              'text/css': ['.css'],
+              'application/json': ['.json'],
+              'application/javascript': ['.js', '.jsx'],
+              'application/typescript': ['.ts', '.tsx'],
+            },
+          },
+        ],
+        excludeAcceptAllOption: false,
+      });
       const file = await handle.getFile();
       const text = await file.text();
       
@@ -82,6 +120,12 @@ export default function App() {
             accept: { 'text/plain': ['.txt'] },
           }],
         });
+      } else {
+        const hasPermission = await verifyPermission(handleToUse, true);
+        if (!hasPermission) {
+          console.error('No permission to save file');
+          return;
+        }
       }
       
       // Update state before writing to ensure UI is snappy
@@ -137,6 +181,19 @@ export default function App() {
           <Save size={16} />
         </button>
         <div className="toolbar-divider"></div>
+        <button className="toolbar-btn" onClick={triggerSearch} title="Search & Replace">
+          <Search size={16} />
+        </button>
+        <button className="toolbar-btn" onClick={zoomIn} title="Zoom In">
+          <ZoomIn size={16} />
+        </button>
+        <button className="toolbar-btn" onClick={zoomOut} title="Zoom Out">
+          <ZoomOut size={16} />
+        </button>
+        <button className="toolbar-btn" onClick={toggleWordWrap} title={`Word Wrap (${wordWrap})`}>
+          <WrapText size={16} />
+        </button>
+        <div className="toolbar-divider"></div>
         <button className="toolbar-btn" onClick={() => activeTabId && closeTab(activeTabId)} title="Close Current File">
           <X size={16} />
         </button>
@@ -181,8 +238,8 @@ export default function App() {
             onMount={handleEditorDidMount}
             options={{
               minimap: { enabled: true },
-              wordWrap: 'on',
-              fontSize: 14,
+              wordWrap: wordWrap,
+              fontSize: fontSize,
               fontFamily: "'Consolas', 'Courier New', monospace"
             }}
           />
