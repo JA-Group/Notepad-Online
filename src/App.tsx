@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText, PanelLeft, Copy, ArrowUp, ArrowDown } from 'lucide-react';
+import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText, PanelLeft, Copy, ArrowUp, ArrowDown, Columns } from 'lucide-react';
 import { useEditorTabs } from './hooks/useEditorTabs';
 import Sidebar from './components/Sidebar';
 import './index.css';
@@ -27,9 +27,11 @@ export default function App() {
   const [fontSize, setFontSize] = useState(14);
   const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSplit, setIsSplit] = useState(false);
   
   const encoding = 'UTF-8';
   const editorRef = useRef<any>(null);
+  const editorRefRight = useRef<any>(null);
 
   useEffect(() => {
     // Load theme from localStorage if possible
@@ -251,6 +253,9 @@ export default function App() {
         <button className="toolbar-btn" onClick={zoomOut} title="Zoom Out">
           <ZoomOut size={16} />
         </button>
+        <button className={`toolbar-btn ${isSplit ? 'active' : ''}`} onClick={() => setIsSplit(!isSplit)} title="Split Editor">
+          <Columns size={16} />
+        </button>
         <button className="toolbar-btn" onClick={toggleWordWrap} title={`Word Wrap (${wordWrap})`}>
           <WrapText size={16} />
         </button>
@@ -290,24 +295,48 @@ export default function App() {
           </div>
 
           {/* Editor */}
-          <div className="editor-container">
+          <div className="editor-container" style={{ display: 'flex', width: '100%' }}>
             {activeTab && (
-              <Editor
-                key={activeTab.id} // Ensure editor remounts or updates when switching tabs, though passing value is usually enough
-                path={activeTab.id} // helps monaco distinguish models
-                height="100%"
-                language={activeTab.language}
-                theme={theme}
-                value={activeTab.content}
-                onChange={onEditorChange}
-                onMount={handleEditorDidMount}
-                options={{
-                  minimap: { enabled: true },
-                  wordWrap: wordWrap,
-                  fontSize: fontSize,
-                  fontFamily: "'Consolas', 'Courier New', monospace"
-                }}
-              />
+              <>
+                <div style={{ flex: 1, borderRight: isSplit ? '1px solid var(--border-color)' : 'none', minWidth: 0 }}>
+                  <Editor
+                    key={`left-${activeTab.id}`}
+                    path={`left-${activeTab.id}`}
+                    height="100%"
+                    language={activeTab.language}
+                    theme={theme}
+                    value={activeTab.content}
+                    onChange={onEditorChange}
+                    onMount={handleEditorDidMount}
+                    options={{
+                      minimap: { enabled: true },
+                      wordWrap: wordWrap,
+                      fontSize: fontSize,
+                      fontFamily: "'Consolas', 'Courier New', monospace"
+                    }}
+                  />
+                </div>
+                {isSplit && (
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Editor
+                      key={`right-${activeTab.id}`}
+                      path={`right-${activeTab.id}`}
+                      height="100%"
+                      language={activeTab.language}
+                      theme={theme}
+                      value={activeTab.content}
+                      onChange={onEditorChange}
+                      onMount={(editor) => { editorRefRight.current = editor; }}
+                      options={{
+                        minimap: { enabled: true },
+                        wordWrap: wordWrap,
+                        fontSize: fontSize,
+                        fontFamily: "'Consolas', 'Courier New', monospace"
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
