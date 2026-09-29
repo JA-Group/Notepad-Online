@@ -62,6 +62,11 @@ body {
   border: 1px solid #cce8ff;
 }
 
+.toolbar-btn.active {
+  background-color: #cce8ff;
+  border-color: #99d1ff;
+}
+
 .toolbar-btn:active {
   background-color: #cce8ff;
 }
@@ -71,6 +76,118 @@ body {
   height: 20px;
   background-color: #ccc;
   margin: 0 4px;
+}
+
+.main-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #f3f3f3;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.sidebar-header {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  letter-spacing: 0.5px;
+  color: #666;
+}
+
+.sidebar-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-action-btn:hover {
+  color: #333;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.tree-node:hover {
+  background-color: #e4e4e4;
+}
+
+.root-node {
+  font-weight: bold;
+}
+
+.tree-icon {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.tree-folder-icon, .tree-file-icon {
+  margin-right: 6px;
+  flex-shrink: 0;
+  color: #555;
+}
+
+.tree-folder-icon {
+  color: #e8a034;
+}
+
+.tree-node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-empty {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+}
+
+.open-folder-primary-btn {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.open-folder-primary-btn:hover {
+  background-color: #0062a3;
+}
+
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .editor-container {

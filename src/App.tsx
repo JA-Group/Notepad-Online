@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText } from 'lucide-react';
+import { Save, FolderOpen, FileText, X, Moon, Sun, Search, ZoomIn, ZoomOut, WrapText, PanelLeft } from 'lucide-react';
 import { useEditorTabs } from './hooks/useEditorTabs';
+import Sidebar from './components/Sidebar';
 import './index.css';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
   const [theme, setTheme] = useState<'vs-light' | 'vs-dark'>('vs-light');
   const [fontSize, setFontSize] = useState(14);
   const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const encoding = 'UTF-8';
   const editorRef = useRef<any>(null);
@@ -105,6 +107,30 @@ export default function App() {
     }
   };
 
+  const openFileFromHandle = async (handle: any) => {
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      
+      let language = 'plaintext';
+      if (file.name.endsWith('.js') || file.name.endsWith('.jsx')) language = 'javascript';
+      else if (file.name.endsWith('.ts') || file.name.endsWith('.tsx')) language = 'typescript';
+      else if (file.name.endsWith('.html')) language = 'html';
+      else if (file.name.endsWith('.css')) language = 'css';
+      else if (file.name.endsWith('.json')) language = 'json';
+      
+      // Check if file is already open
+      const existingTab = tabs.find(t => t.name === file.name);
+      if (existingTab) {
+        setActiveTabId(existingTab.id);
+      } else {
+        createNewTab(file.name, text, language, handle);
+      }
+    } catch (err) {
+      console.error('Error opening file from sidebar:', err);
+    }
+  };
+
   const saveFile = async () => {
     try {
       if (!editorRef.current || !activeTab) return;
@@ -171,6 +197,10 @@ export default function App() {
 
       {/* Toolbar */}
       <div className="toolbar">
+        <button className={`toolbar-btn ${isSidebarOpen ? 'active' : ''}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)} title="Toggle Sidebar">
+          <PanelLeft size={16} />
+        </button>
+        <div className="toolbar-divider"></div>
         <button className="toolbar-btn" onClick={() => createNewTab()} title="New File" data-testid="new-file-btn">
           <FileText size={16} />
         </button>
@@ -203,47 +233,53 @@ export default function App() {
         </button>
       </div>
 
-      {/* Tab bar */}
-      <div className="tab-bar">
-        {tabs.map(tab => (
-          <div 
-            key={tab.id} 
-            className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
-            onClick={() => setActiveTabId(tab.id)}
-          >
-            <span className="tab-title">
-              {tab.name} {tab.isUnsaved ? '*' : ''}
-            </span>
-            <button 
-              className="tab-close-btn" 
-              onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-            >
-              <X size={12} />
-            </button>
+      <div className="main-area">
+        {isSidebarOpen && <Sidebar onOpenFile={openFileFromHandle} />}
+        
+        <div className="editor-area">
+          {/* Tab bar */}
+          <div className="tab-bar">
+            {tabs.map(tab => (
+              <div 
+                key={tab.id} 
+                className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
+                onClick={() => setActiveTabId(tab.id)}
+              >
+                <span className="tab-title">
+                  {tab.name} {tab.isUnsaved ? '*' : ''}
+                </span>
+                <button 
+                  className="tab-close-btn" 
+                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Editor */}
-      <div className="editor-container">
-        {activeTab && (
-          <Editor
-            key={activeTab.id} // Ensure editor remounts or updates when switching tabs, though passing value is usually enough
-            path={activeTab.id} // helps monaco distinguish models
-            height="100%"
-            language={activeTab.language}
-            theme={theme}
-            value={activeTab.content}
-            onChange={onEditorChange}
-            onMount={handleEditorDidMount}
-            options={{
-              minimap: { enabled: true },
-              wordWrap: wordWrap,
-              fontSize: fontSize,
-              fontFamily: "'Consolas', 'Courier New', monospace"
-            }}
-          />
-        )}
+          {/* Editor */}
+          <div className="editor-container">
+            {activeTab && (
+              <Editor
+                key={activeTab.id} // Ensure editor remounts or updates when switching tabs, though passing value is usually enough
+                path={activeTab.id} // helps monaco distinguish models
+                height="100%"
+                language={activeTab.language}
+                theme={theme}
+                value={activeTab.content}
+                onChange={onEditorChange}
+                onMount={handleEditorDidMount}
+                options={{
+                  minimap: { enabled: true },
+                  wordWrap: wordWrap,
+                  fontSize: fontSize,
+                  fontFamily: "'Consolas', 'Courier New', monospace"
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Status Bar */}
